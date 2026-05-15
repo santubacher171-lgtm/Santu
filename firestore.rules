@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'santubacher5@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      // Users can only create their own profile during signup
+      // They cannot modify their coins or role
+      allow create: if isOwner(userId) && 
+                      request.resource.data.keys().hasAll(['uid', 'email', 'coins', 'role', 'createdAt', 'tasksCompleted', 'totalWithdrawn']) &&
+                      request.resource.data.coins == 0 &&
+                      request.resource.data.role == 'user' &&
+                      request.resource.data.uid == userId;
+      
+      allow update: if (isOwner(userId) && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'tasksCompleted'])) // Users can't update coins/role
+                      || isAdmin();
+    }
+
+    // --- Tasks ---
+    match /tasks/{taskId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Withdrawals ---
+    match /withdrawals/{withdrawalId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.status == 'pending' &&
+                      isValidId(withdrawalId);
+                      
+      allow update: if isAdmin(); // Only admins can approve/reject
+      allow delete: if false;
+    }
+
+    // --- Admins collection (Optional, for more admins) ---
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // System-only
+    }
+  }
+}

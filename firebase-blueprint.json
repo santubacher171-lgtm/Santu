@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and earnings statistics",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "coins": { "type": "integer" },
+        "totalWithdrawn": { "type": "number" },
+        "tasksCompleted": { "type": "integer" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "coins", "role"]
+    },
+    "Task": {
+      "title": "Earning Task",
+      "description": "A task that a user can complete to earn coins",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "reward": { "type": "integer" },
+        "duration": { "type": "integer" },
+        "url": { "type": "string" },
+        "type": { "type": "string", "enum": ["video", "link"] },
+        "active": { "type": "boolean" }
+      },
+      "required": ["title", "reward", "duration", "type"]
+    },
+    "Withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "A request by a user to withdraw coins for real cash",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amountCoins": { "type": "integer" },
+        "amountUSD": { "type": "number" },
+        "method": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amountCoins", "method", "details", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and stats"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "List of available tasks"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "Withdrawal",
+      "description": "Withdrawal requests submitted by users"
+    }
+  }
+}
